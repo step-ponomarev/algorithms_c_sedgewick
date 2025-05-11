@@ -16,11 +16,13 @@ int main(const int argc, char *argv[]) {
     }
 
     // one root -> one union
-    if (find_root(id, p) == find_root(id, q)) {
+    const int pV = find_root(id, p);
+    const int pQ = find_root(id, q);
+    if (pV == pQ) {
       continue;
     }
 
-    merge_unions(id, p, q);
+    merge_unions(id, pV, pQ);
     printf("%10d-%d, id[i]x%d\n", p, q, MAX_VAL);
   }
 
