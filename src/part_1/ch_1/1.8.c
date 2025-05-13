@@ -20,8 +20,8 @@ int main(const int argc, char *argv[]) {
     }
 
     // one root -> one union
-    const int pV = find_root(id, p);
-    const int pQ = find_root(id, q);
+    const int pV = find_root_with_compression(id, p);
+    const int pQ = find_root_with_compression(id, q);
     if (pV == pQ) {
       continue;
     }
