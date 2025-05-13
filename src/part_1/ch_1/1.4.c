@@ -21,7 +21,10 @@ int main(const int argc, char *argv[]) {
     }
 
     merge_unions(id, p, q);
-    printf("%10d-%d, id[i]x%d\n", p, q, MAX_VAL);
+    for (int i = 0; i < MAX_VAL; i++) {
+      printf("%d ", id[i]);
+    }
+    printf("\n");
   }
 
   return 0;
