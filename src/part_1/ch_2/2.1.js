@@ -73,7 +73,6 @@ rl.on('line', (input) => {
      union_count = SZ[i] > union_count ? SZ[i] : union_count;
     }
 
-    console.log(`${p}-${q}`);
     if (union_count == N - 1) {
       rl.close();
     }

@@ -37,7 +37,7 @@ public class Ex2_1 {
         ID[i] = ID[ID[i]];
       }
 
-      for (j = q; j != ID[j]; q = ID[j]) {
+      for (j = q; j != ID[j]; j = ID[j]) {
         ID[j] = ID[ID[j]];
       }
 
@@ -53,9 +53,7 @@ public class Ex2_1 {
         ID[j] = ID[i];
         SZ[i] += SZ[j];
         unionCount = Math.max(SZ[i], unionCount);
-      }
-
-      System.out.printf("%d-%d\n", p, q);
+      } 
 
       if (unionCount == N - 1) {
         break;

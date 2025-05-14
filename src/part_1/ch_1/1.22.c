@@ -58,7 +58,6 @@ int main(const int argc, char *argv[]) {
       union_count = max(sz[i], union_count);
     }
 
-    printf("%d-%d\n", p, q);
     if (union_count == max_val - 1) {
       break;
     }
