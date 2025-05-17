@@ -6,6 +6,7 @@ typedef struct node node;
 typedef node *link;
 
 link create(const item);
+void free_list(link);
 void free_node(link);
 void insert_next(link, const item);
 link delete_curr(link);

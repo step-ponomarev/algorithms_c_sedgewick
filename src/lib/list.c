@@ -15,11 +15,23 @@ link create(const item item) {
   return link;
 }
 
+void free_list(link l) {
+  if (l == NULL) {
+    return;
+  }
+
+  while (l != NULL) {
+    link next_node = next(l);
+    free_node(l);
+    l = next_node;
+  }
+}
 void free_node(link l) {
   if (l == NULL) {
     return;
   }
 
+  delete_curr(l);
   free(l);
 }
 
