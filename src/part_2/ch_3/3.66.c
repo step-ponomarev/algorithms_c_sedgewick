@@ -7,6 +7,7 @@
 #include "../../lib/list.h"
 
 #define max(a, b) (a > b ? a : b)
+#define idix(x, y) (x * (GRID_SIZE - 1) + y)
 
 extern float rand_float();
 extern void **malloc2d(const size_t row, const size_t col,
@@ -79,7 +80,7 @@ void insert_point(const point p) {
   const int X = (int)(p.x * G) + 1;
   const int Y = (int)(p.y * G) + 1;
 
-  const int pr = find_root(X * (GRID_SIZE - 1) + Y);
+  const int pr = find_root(idix(X, Y));
   SZ[pr]++;
   largest_network_count = max(SZ[pr], largest_network_count);
 
@@ -91,7 +92,7 @@ void insert_point(const point p) {
           continue;
         }
 
-        const int qr = find_root(i * (GRID_SIZE - 1) + j);
+        const int qr = find_root(idix(i, j));
         if (qr == pr) {
           continue;
         }
