@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-void **malloc2d(size_t row, size_t col, size_t cell_size) {
+void **malloc2d(const size_t row, const size_t col, const size_t cell_size) {
   void **matrix = malloc(sizeof(void *) * row);
   for (int i = 0; i < row; i++) {
     matrix[i] = malloc(col * cell_size);
@@ -10,7 +10,16 @@ void **malloc2d(size_t row, size_t col, size_t cell_size) {
   return matrix;
 };
 
-void ***malloc3d(size_t row, size_t col, size_t z, size_t cell_size) {
+void free2d(void **matrix, const size_t row) {
+  for (int i = 0; i < row; i++) {
+    free(matrix[i]);
+  }
+
+  free(matrix);
+}
+
+void ***malloc3d(const size_t row, const size_t col, const size_t z,
+                 const size_t cell_size) {
   void ***matrix = malloc(sizeof(void *) * row);
   for (int i = 0; i < row; i++) {
     matrix[i] = malloc(sizeof(void *) * col);
@@ -21,3 +30,14 @@ void ***malloc3d(size_t row, size_t col, size_t z, size_t cell_size) {
 
   return matrix;
 };
+
+void free3d(void ***matrix, const size_t row, const size_t col) {
+  for (int i = 0; i < row; i++) {
+    for (int j = 0; j < col; j++) {
+      free(matrix[i][j]);
+    }
+    free(matrix[i]);
+  }
+
+  free(matrix);
+}

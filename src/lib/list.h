@@ -1,7 +1,11 @@
 #ifndef LIST_H_
 #define LIST_H_
 
-typedef int item;
+#ifndef ITEM_T
+#define ITEM_T int // Значение по умолчанию
+#endif
+
+typedef ITEM_T item;
 typedef struct node node;
 typedef node *link;
 
