@@ -1,4 +1,5 @@
 #include "../../lib/point.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,6 +33,11 @@ int main(const int argc, const char *argv[]) {
   }
 
   const int N = atoi(argv[1]);
+  if (N <= 0) {
+    fprintf(stderr, "N must be in range (0, %d]\n", INT_MAX);
+    return -1;
+  }
+
   d = atof(argv[2]);
   if (d <= 0 || d >= 1) {
     fprintf(stderr, "Distance must be in range (0, 1)\n");
