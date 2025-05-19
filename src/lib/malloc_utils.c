@@ -1,3 +1,4 @@
+#include "malloc_utils.h"
 #include <stddef.h>
 #include <stdlib.h>
 

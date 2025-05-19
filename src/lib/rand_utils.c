@@ -1,3 +1,4 @@
+#include "rand_utils.h"
 #include <stdlib.h>
 
 int random_int(int from, int to) {
