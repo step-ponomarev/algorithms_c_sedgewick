@@ -1,6 +1,7 @@
 #ifndef MULTI_LIST_H_
 #define MULTI_LIST_H_
 
+#include <stddef.h>
 #ifndef MULTI_ITEM_TYPE
 #define MULTI_ITEM_TYPE int
 #endif
@@ -12,6 +13,8 @@ struct multi_node {
   MULTI_ITEM_TYPE item;
   multi_node *right;
   multi_node *bottom;
+  int i;
+  int j;
 };
 
 struct multi_list {
@@ -23,5 +26,8 @@ struct multi_list {
 
 multi_list multi_list_create(const MULTI_ITEM_TYPE **, int, int);
 void multi_list_free(multi_list);
+
+// NxM * MxP = NxP
+multi_list multi_list_multipy(const multi_list *, const multi_list *);
 
 #endif
