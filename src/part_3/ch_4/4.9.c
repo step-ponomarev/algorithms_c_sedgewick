@@ -11,7 +11,6 @@ int main(const int argc, const char *argv[]) {
   Stack *stack = stack_create(sizeof(char));
 
   const char *expression = argv[1];
-  printf("%s\n", expression);
   size_t p = 0;
   for (size_t p = 0; expression[p] != '\0'; p++) {
     if (expression[p] == '(') {
