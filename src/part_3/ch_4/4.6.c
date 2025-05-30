@@ -20,4 +20,6 @@ int main() {
   printf("\n");
 
   stack_destroy(stack);
+
+  return 0;
 }
