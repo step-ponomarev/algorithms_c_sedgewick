@@ -69,7 +69,7 @@ void stack_pop(Stack *stack, void *dest) {
 
 size_t stack_size(const Stack *stack) { return stack->size; }
 
-size_t stack_is_empty(const Stack *stack) { return stack->size == 0; }
+char stack_is_empty(const Stack *stack) { return stack->size == 0; }
 
 void expand_stack(Stack *stack) {
   stack->capacity *= EXPAND_FACTOR;
