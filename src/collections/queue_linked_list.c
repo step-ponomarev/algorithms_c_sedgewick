@@ -20,6 +20,7 @@ struct Queue {
 };
 
 void queue_destroy_node(Node *);
+void queue_null_check(const Queue *);
 void queue_error(const char *);
 
 Queue *queue_create(const size_t entry_size) {
@@ -36,6 +37,8 @@ Queue *queue_create(const size_t entry_size) {
 };
 
 void queue_destroy(Queue *queue) {
+  queue_null_check(queue);
+
   Node *curr = queue->head;
   while (curr != NULL) {
     Node *next = curr->next;
@@ -46,6 +49,8 @@ void queue_destroy(Queue *queue) {
   free(queue);
 }
 void queue_add(Queue *queue, const void *entry) {
+  queue_null_check(queue);
+
   Node *new_node = malloc(sizeof(Node));
   if (new_node == NULL) {
     queue_error("New node allocation is failed");
@@ -68,6 +73,8 @@ void queue_add(Queue *queue, const void *entry) {
 }
 
 void queue_get(Queue *queue, void *dest) {
+  queue_null_check(queue);
+
   if (queue_is_empty(queue)) {
     queue_error("Queue is empty");
     return;
@@ -85,9 +92,17 @@ void queue_get(Queue *queue, void *dest) {
   queue->size--;
 }
 
-char queue_is_empty(const Queue *queue) { return queue->size == 0; }
+char queue_is_empty(const Queue *queue) {
+  queue_null_check(queue);
 
-size_t queue_size(const Queue *queue) { return queue->size; }
+  return queue->size == 0;
+}
+
+size_t queue_size(const Queue *queue) {
+  queue_null_check(queue);
+
+  return queue->size;
+}
 
 void queue_destroy_node(Node *node) {
   if (node == NULL) {
@@ -97,6 +112,14 @@ void queue_destroy_node(Node *node) {
 
   free(node->val);
   free(node);
+}
+
+void queue_null_check(const Queue *queue) {
+  if (queue != NULL) {
+    return;
+  }
+
+  queue_error("Queue is null");
 }
 
 void queue_error(const char *msg) {
