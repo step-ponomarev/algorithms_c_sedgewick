@@ -1,8 +1,10 @@
 #include "stack.h"
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define STACK_ERROR_CODE -213
 #define START_CAPACITY 0xff
 #define EXPAND_FACTOR 2
 
@@ -15,6 +17,7 @@ struct Stack {
 
 void expand_stack(Stack *);
 void shrink_stack(Stack *);
+void stack_error(const char *);
 
 Stack *stack_create(const size_t entry_size) {
   if (entry_size == 0) {
@@ -54,8 +57,8 @@ void stack_push(Stack *stack, const void *entry) {
 }
 
 void stack_pop(Stack *stack, void *dest) {
-  if (stack->size == 0) {
-    return;
+  if (stack_is_empty(stack)) {
+    stack_error("Pop on empty stack");
   }
 
   if (stack->capacity > START_CAPACITY &&
@@ -79,4 +82,9 @@ void expand_stack(Stack *stack) {
 void shrink_stack(Stack *stack) {
   stack->capacity /= EXPAND_FACTOR;
   stack->data = realloc(stack->data, stack->capacity);
+}
+
+void stack_error(const char *msg) {
+  fprintf(stderr, "StackERROR: %s\n", msg);
+  exit(STACK_ERROR_CODE);
 }
