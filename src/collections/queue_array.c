@@ -11,7 +11,6 @@
 
 #define queue_get_tail_index(q) (q->head_index + q->size - 1)
 
-// fixed array implementation first
 struct Queue {
   void *array;
   size_t size;
