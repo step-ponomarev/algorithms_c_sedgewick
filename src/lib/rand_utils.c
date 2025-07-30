@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-bool init = false;
-
 int random_int(int from, int to) {
+  static bool init;
   if (!init) {
     srand(time(NULL));
     init = true;
