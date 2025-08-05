@@ -126,7 +126,6 @@ void test_reverse_order_visitin_rand() {
 
   for (int i = 0; i < AMOUNT; i++) {
     const int val = random_int(0, 100);
-    printf("Fail on: %d\n", val);
     tree_add(tree, &val);
   }
 
@@ -184,15 +183,15 @@ void test_max() {
 }
 
 int main() {
-  // test_tree_adding();
-  // test_tree_removing();
-  // test_in_order_visitin();
-  // test_reverse_order_visitin();
-  // test_in_order_visitin_rand();
+  test_tree_adding();
+  test_tree_removing();
+  test_in_order_visitin();
+  test_reverse_order_visitin();
+  test_in_order_visitin_rand();
   test_reverse_order_visitin_rand();
-  // test_tree_duplicate_adding();
-  // test_min();
-  // test_max();
+  test_tree_duplicate_adding();
+  test_min();
+  test_max();
 
   printf("Tests are passed\n");
 }

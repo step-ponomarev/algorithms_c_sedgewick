@@ -7,11 +7,6 @@
 #include <string.h>
 
 typedef enum BalanceFactor { LEFT = -1, EQUALS = 0, RIGHT = 1 } BalanceFactor;
-typedef enum BalanceChangeAction {
-  TO_RIGHT = 1,
-  TO_LEFT = -1
-} BalanceChangeAction;
-
 typedef struct Node Node;
 
 struct Node {
@@ -36,8 +31,7 @@ Node *_find_parent(Node *node, const void *val, Comparator *comparator);
 Node *_find_node(Node *node, const void *val, Comparator *comparator);
 Node *_find_min_node(Node *node);
 Node *_find_max_node(Node *node);
-void _fix_balance(Node *curr_to_fix, Node **root,
-                  BalanceChangeAction balance_changed_action);
+void _fix_balance(Node *parent, Node *node, Node **root);
 void _rotate_left(Node *node, Node **root);
 void _rotate_right(Node *node, Node **root);
 bool _add_node(Node *sub_tree, Node *node, Comparator *comparator, Node **root);
@@ -92,75 +86,8 @@ bool tree_add(Tree *tree, const void *val) {
 
 void tree_remove(Tree *tree, const void *val) {
   _check_not_null(tree);
-  Node *node = _find_node(tree->root, val, tree->comparator);
-  if (node == NULL) {
-    return;
-  }
 
-  Node **curr_node_ptr;
-  if (node->parent != NULL) {
-    const int res = tree->comparator(node->parent->val, node->val);
-    curr_node_ptr = res < 0 ? &(node->parent->right) : &(node->parent->left);
-  } else {
-    curr_node_ptr = &(tree->root);
-  }
-
-  // No chilren
-  if (node->left == NULL && node->right == NULL) {
-    _destroy_node(node);
-    *curr_node_ptr = NULL;
-    tree->size--;
-    return;
-  }
-
-  // Both chilren
-  if (node->left != NULL && node->right != NULL) {
-    Node *sub_tree_root;
-    Node *sub_tree;
-    switch (node->balance_factor) {
-    case EQUALS:
-    case RIGHT:
-      sub_tree_root = node->left;
-      sub_tree = node->right;
-      break;
-    case LEFT:
-      sub_tree_root = node->right;
-      sub_tree = node->left;
-      break;
-    }
-
-    sub_tree_root->parent = node->parent;
-    *curr_node_ptr = sub_tree_root;
-
-    Node *sub_tree_parent =
-        _find_parent(sub_tree_root, sub_tree->val, tree->comparator);
-    sub_tree->parent = sub_tree_parent;
-
-    const int res = tree->comparator(sub_tree_parent->val, sub_tree->val);
-    if (res < 0) {
-      sub_tree_parent->right = sub_tree;
-    } else {
-      sub_tree_parent->left = sub_tree;
-    }
-
-    // TODO: починить баланс
-
-    _destroy_node(node);
-    tree->size--;
-    return;
-  }
-
-  // one child
-  if (node->left != NULL) {
-    *curr_node_ptr = node->left;
-    node->left->parent = node->parent;
-  } else {
-    *curr_node_ptr = node->right;
-    node->right->parent = node->parent;
-  }
-
-  _destroy_node(node);
-  tree->size--;
+  // TODO: Тут нужно подумать как правильно удалять;
 }
 
 bool tree_contains(const Tree *tree, const void *val) {
@@ -340,37 +267,57 @@ bool _add_node(Node *sub_tree, Node *node, Comparator *comparator,
   node->parent = parant;
   *added_node = node;
 
-  // TODO: fix fix_balance
-  //_fix_balance(parant, root, res < 0 ? TO_RIGHT : TO_LEFT);
+  _fix_balance(parant, node, root);
 
   return true;
 }
 
-void _fix_balance(Node *curr_to_fix, Node **root,
-                  BalanceChangeAction balance_changed_action) {
-  if (curr_to_fix == NULL) {
+void _fix_balance(Node *parent, Node *node, Node **root) {
+  if (parent == NULL) {
     return;
   }
 
-  if (balance_changed_action == TO_RIGHT) {
-    if (curr_to_fix->balance_factor == LEFT) {
-      curr_to_fix->balance_factor = EQUALS;
+  Node *a = parent;
+  Node *prev = node;
+  while (a != NULL) {
+    if (a->balance_factor == EQUALS) {
+      a->balance_factor = a->right == prev ? RIGHT : LEFT;
+      prev = a;
+      a = a->parent;
+      continue;
+    }
+
+    if (a->balance_factor == LEFT && a->right == prev ||
+        a->balance_factor == RIGHT && a->left == prev) {
+      a->balance_factor = EQUALS;
       return;
     }
 
-    // TODO: проверять детей
-    if (curr_to_fix->balance_factor == RIGHT) {
-      printf("right\n");
-
-      _rotate_left(curr_to_fix, root);
-      return;
+    Node *b = a->left == prev ? a->left : a->right;
+    Node *r = b->balance_factor == LEFT ? b->left : b->right;
+    if (a->balance_factor == LEFT && b->balance_factor == LEFT) {
+      _rotate_right(a, root);
+    } else if (a->balance_factor == RIGHT && b->balance_factor == RIGHT) {
+      _rotate_left(a, root);
+    } else if (a->balance_factor == LEFT && b->balance_factor == RIGHT) {
+      _rotate_left(b, root);
+      _rotate_right(a, root);
+    } else if (a->balance_factor == RIGHT && b->balance_factor == LEFT) {
+      _rotate_right(b, root);
+      _rotate_left(a, root);
     }
 
-  } else if (balance_changed_action == TO_LEFT) {
-  } else {
-    fprintf(stderr, "Unsupported balance changed action: %d\n",
-            balance_changed_action);
-    exit(1);
+    if (r->balance_factor == EQUALS) {
+      a->balance_factor = EQUALS;
+      b->balance_factor = EQUALS;
+    } else if (r->balance_factor == LEFT) {
+
+    } else if (r->balance_factor == RIGHT) {
+    }
+
+    r->balance_factor = EQUALS;
+
+    return;
   }
 }
 
@@ -394,10 +341,8 @@ void _rotate_left(Node *node, Node **root) {
       node->parent->right = new_sub_root;
     }
   }
-  node->parent = new_sub_root;
 
-  node->balance_factor = EQUALS;
-  new_sub_root->balance_factor = EQUALS;
+  node->parent = new_sub_root;
 }
 
 void _rotate_right(Node *node, Node **root) {
@@ -421,9 +366,6 @@ void _rotate_right(Node *node, Node **root) {
     }
   }
   node->parent = new_sub_root;
-
-  node->balance_factor = EQUALS;
-  new_sub_root->balance_factor = EQUALS;
 }
 
 void _destroy_root(Node *root) {
