@@ -7,6 +7,8 @@
 #include <string.h>
 
 typedef enum BalanceFactor { LEFT = -1, EQUALS = 0, RIGHT = 1 } BalanceFactor;
+typedef enum Direction { LEFT_DIR = 1, RIGHT_DIR = 2 } Direction;
+
 typedef struct Node Node;
 
 struct Node {
@@ -31,7 +33,8 @@ Node *_find_parent(Node *node, const void *val, Comparator *comparator);
 Node *_find_node(Node *node, const void *val, Comparator *comparator);
 Node *_find_min_node(Node *node);
 Node *_find_max_node(Node *node);
-void _fix_balance(Node *parent, Node *node, Node **root);
+void _rebalance_after_insert(Node *parent, Node **root);
+void _rebalance_after_remove(Node *parent, Node *linked, Node **root);
 void _rotate_left(Node *node, Node **root);
 void _rotate_right(Node *node, Node **root);
 bool _add_node(Node *sub_tree, Node *node, Comparator *comparator, Node **root);
@@ -84,10 +87,99 @@ bool tree_add(Tree *tree, const void *val) {
   }
 }
 
-void tree_remove(Tree *tree, const void *val) {
+static int _get_deep(const Node *node) {
+  if (node == NULL) {
+    return 0;
+  }
+
+  int left = _get_deep(node->left);
+  int right = _get_deep(node->right);
+
+  return 1 + (left > right ? left : right);
+}
+
+/*
+ * Вызов для всего дерева.
+ * Печатает глубину и возвращает true, если дерево:
+ *   - не NULL
+ *   - корректно как BST
+ *   - сбалансировано (AVL)
+ *   - имеет консистентные balance_factor
+ */
+bool tree_validate(const Tree *tree) {
+  _check_not_null(tree);
+  if (tree->size == 0) {
+    return true;
+  }
+
+  // int left = _get_deep(tree->root->left);
+  // int right = _get_deep(tree->root->right);
+
+  printf("L %d | R %d\n", left, right);
+
+  // int diff = abs(left - right);
+
+  return true;
+}
+
+bool tree_remove(Tree *tree, const void *val) {
   _check_not_null(tree);
 
-  // TODO: Тут нужно подумать как правильно удалять;
+  Node *node = _find_node(tree->root, val, tree->comparator);
+  if (node == NULL) {
+    return false;
+  }
+
+  if (tree->size == 1) {
+    _destroy_node(tree->root);
+    tree->root = NULL;
+    tree->size = 0;
+    return true;
+  }
+
+  if (node == tree->root && tree->root->left == NULL ||
+      tree->root->right == NULL) {
+    tree->root =
+        tree->root->left == NULL ? tree->root->right : tree->root->left;
+    tree->root->parent = NULL;
+    tree->size--;
+
+    _destroy_node(node);
+    return true;
+  }
+
+  const Direction dir = node->parent->left == node ? LEFT_DIR : RIGHT_DIR;
+  Node **link_to_current_node;
+  if (node == tree->root) {
+    link_to_current_node = &tree->root;
+  } else {
+    link_to_current_node =
+        dir == LEFT_DIR ? &node->parent->left : &node->parent->right;
+  }
+
+  Node *parent = node->parent;
+  if (node->left == NULL && node->right == NULL) {
+    *link_to_current_node = NULL;
+    _rebalance_after_remove(parent, NULL, &tree->root);
+  } else if (node->left == NULL || node->right == NULL) {
+    Node *next = node->left == NULL ? node->right : node->left;
+    next->parent = parent;
+    *link_to_current_node = next;
+    _rebalance_after_remove(parent, next, &tree->root);
+  } else {
+    Node *to_add = _find_parent(node->right, node->left->val, tree->comparator);
+    *link_to_current_node = node->right;
+    node->right->parent = parent;
+
+    to_add->left = node->left;
+    node->left->parent = to_add;
+    _rebalance_after_remove(to_add, to_add->left, &tree->root);
+  }
+
+  _destroy_node(node);
+  tree->size--;
+
+  return true;
 }
 
 bool tree_contains(const Tree *tree, const void *val) {
@@ -267,57 +359,137 @@ bool _add_node(Node *sub_tree, Node *node, Comparator *comparator,
   node->parent = parant;
   *added_node = node;
 
-  _fix_balance(parant, node, root);
+  _rebalance_after_insert(parant, root);
 
   return true;
 }
 
-void _fix_balance(Node *parent, Node *node, Node **root) {
-  if (parent == NULL) {
+void _rebalance_after_insert(Node *node, Node **root) {
+  if (node == NULL) {
     return;
   }
 
-  Node *a = parent;
-  Node *prev = node;
+  if (node->left != NULL && node->right != NULL ||
+      node->left == NULL && node->right == NULL) {
+    node->balance_factor = EQUALS;
+    return;
+  }
+
+  Node *a = node;
+  Node *b = node->left == NULL ? node->right : node->left;
   while (a != NULL) {
     if (a->balance_factor == EQUALS) {
-      a->balance_factor = a->right == prev ? RIGHT : LEFT;
-      prev = a;
+      a->balance_factor = a->right == b ? RIGHT : LEFT;
+      b = a;
       a = a->parent;
       continue;
     }
 
-    if (a->balance_factor == LEFT && a->right == prev ||
-        a->balance_factor == RIGHT && a->left == prev) {
+    if (a->balance_factor == LEFT && a->right == b ||
+        a->balance_factor == RIGHT && a->left == b) {
       a->balance_factor = EQUALS;
       return;
     }
 
-    Node *b = a->left == prev ? a->left : a->right;
-    Node *r = b->balance_factor == LEFT ? b->left : b->right;
-    if (a->balance_factor == LEFT && b->balance_factor == LEFT) {
-      _rotate_right(a, root);
-    } else if (a->balance_factor == RIGHT && b->balance_factor == RIGHT) {
-      _rotate_left(a, root);
+    if (a->balance_factor == LEFT && b->balance_factor == LEFT ||
+        a->balance_factor == RIGHT && b->balance_factor == RIGHT) {
+
+      b->balance_factor == LEFT ? _rotate_right(a, root)
+                                : _rotate_left(a, root);
+
     } else if (a->balance_factor == LEFT && b->balance_factor == RIGHT) {
       _rotate_left(b, root);
       _rotate_right(a, root);
-    } else if (a->balance_factor == RIGHT && b->balance_factor == LEFT) {
+    } else {
       _rotate_right(b, root);
       _rotate_left(a, root);
     }
 
-    if (r->balance_factor == EQUALS) {
-      a->balance_factor = EQUALS;
-      b->balance_factor = EQUALS;
-    } else if (r->balance_factor == LEFT) {
+    a->balance_factor = b->balance_factor = EQUALS;
+    return;
+  }
+}
 
-    } else if (r->balance_factor == RIGHT) {
+void _rebalance_after_remove(Node *parent, Node *linked, Node **root) {
+  if (parent == NULL) {
+    return;
+  }
+
+  // rmoeved list, and has another - deep is the same
+  if (parent->balance_factor == EQUALS) {
+    parent->balance_factor = parent->left == NULL ? RIGHT : LEFT;
+    return;
+  }
+
+  Node *a = parent;
+  Node *b = NULL;
+  if (a->left != NULL && a->right != NULL) {
+    b = a->left->left != NULL || a->left->right != NULL ? a->left : a->right;
+  } else if (a->left != NULL || a->right != NULL) {
+    b = a->left == NULL ? a->right : a->left;
+  }
+
+  while (a != NULL) {
+    if (a->left == NULL && a->right == NULL) {
+      a->balance_factor = EQUALS;
+      if (b != NULL && b->balance_factor == EQUALS) {
+        return;
+      }
+
+      b = a;
+      a = a->parent;
+      continue;
     }
 
+    if (a->balance_factor == EQUALS) {
+      a->balance_factor = a->left == b ? RIGHT : LEFT;
+    }
+
+    if (b->balance_factor == EQUALS) {
+      a->balance_factor += a->left == b ? RIGHT : LEFT;
+      b = a;
+      a = a->parent;
+      continue;
+    }
+
+    if (a->balance_factor == RIGHT && b->balance_factor == RIGHT ||
+        a->balance_factor == LEFT && b->balance_factor == LEFT) {
+      Node *a_parent = a->parent;
+
+      a->balance_factor == RIGHT ? _rotate_left(a, root)
+                                 : _rotate_right(a, root);
+      a->balance_factor = EQUALS;
+      b->balance_factor = EQUALS;
+      a = a_parent;
+      continue;
+    }
+
+    Node *r = b->balance_factor == EQUALS ? NULL
+              : b->balance_factor == LEFT ? b->left
+                                          : b->right;
+    // a right, b left OR a left, b right
+    Node *prev_parent = a->parent;
+    const bool from_left = prev_parent != NULL && prev_parent->left == a;
+    const bool right = a->balance_factor == RIGHT;
+    if (right) {
+      _rotate_right(b, root);
+      _rotate_left(a, root);
+    } else {
+      _rotate_left(b, root);
+      _rotate_right(a, root);
+    }
+
+    if (r == NULL || r->balance_factor == EQUALS) {
+      a->balance_factor = b->balance_factor = EQUALS;
+    } else if (r->balance_factor == LEFT) {
+      a->balance_factor = b->balance_factor = LEFT;
+    } else {
+      a->balance_factor = b->balance_factor = RIGHT;
+    }
     r->balance_factor = EQUALS;
 
-    return;
+    a = prev_parent;
+    b = a == NULL ? NULL : from_left ? a->left : a->right;
   }
 }
 

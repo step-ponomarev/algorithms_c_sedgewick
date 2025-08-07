@@ -56,10 +56,13 @@ void test_tree_removing() {
   Tree *tree = tree_create(sizeof(int), &comare_int);
   for (int i = 0; i < AMOUNT; i++) {
     tree_add(tree, &i);
+    assert(tree_validate(tree));
   }
 
   for (int i = AMOUNT - 1; i >= 0; i--) {
-    tree_remove(tree, &i);
+    printf("Try to remove %d\n", i);
+    bool res = tree_remove(tree, &i);
+    assert(tree_validate(tree));
   }
 
   assert(tree_size(tree) == 0);
