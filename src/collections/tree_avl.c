@@ -1,7 +1,5 @@
 #include "comparator.h"
 #include "tree.h"
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,15 +24,13 @@ typedef struct Tree {
   Comparator *comparator;
 } Tree;
 
-// TODO: Отчинить повороты эти все. сделать как можно чище.
-
 Node *_create_node(const void *val, const size_t size);
 Node *_find_parent(Node *node, const void *val, Comparator *comparator);
 Node *_find_node(Node *node, const void *val, Comparator *comparator);
 Node *_find_min_node(Node *node);
 Node *_find_max_node(Node *node);
 void _rebalance_after_insert(Node *parent, Node **root);
-void _rebalance_after_remove(Node *parent, Node *linked, Node **root);
+void _rebalance_after_remove(Node *parent, bool from_left, Node **root);
 void _rotate_left(Node *node, Node **root);
 void _rotate_right(Node *node, Node **root);
 bool _add_node(Node *sub_tree, Node *node, Comparator *comparator, Node **root);
@@ -42,8 +38,6 @@ void _check_not_null(const void *tree);
 void _destroy_node(Node *node);
 void _destroy_root(Node *root);
 void _traversal(const Node *node, Visiter *visiter, const Order order);
-
-// TODO: adding function with balance_factor
 
 Tree *tree_create(const size_t element_size, Comparator *comparator) {
   _check_not_null(comparator);
@@ -67,6 +61,64 @@ void tree_destroy(Tree *tree) {
   }
 
   free(tree);
+}
+
+// Вспомогательная структура для возврата сразу нескольких проверок
+typedef struct ValidationResult {
+  bool valid;
+  int height;
+} ValidationResult;
+
+static ValidationResult _validate_node(const Node *node, Comparator *comparator,
+                                       const void *min_val,
+                                       const void *max_val) {
+  if (node == NULL) {
+    return (ValidationResult){.valid = true, .height = 0};
+  }
+
+  // Проверка BST-инварианта: node->val ∈ (min_val, max_val)
+  if (min_val && comparator(node->val, min_val) <= 0) {
+    return (ValidationResult){.valid = false, .height = 0};
+  }
+  if (max_val && comparator(node->val, max_val) >= 0) {
+    return (ValidationResult){.valid = false, .height = 0};
+  }
+
+  // Рекурсивная проверка поддеревьев
+  ValidationResult left =
+      _validate_node(node->left, comparator, min_val, node->val);
+  if (!left.valid)
+    return left;
+
+  ValidationResult right =
+      _validate_node(node->right, comparator, node->val, max_val);
+  if (!right.valid)
+    return right;
+
+  // Проверка AVL-баланса
+  int balance = right.height - left.height;
+  if (balance < -1 || balance > 1) {
+    return (ValidationResult){.valid = false, .height = 0};
+  }
+
+  // Проверка согласованности balance_factor
+  if ((int)node->balance_factor !=
+      (balance < 0 ? LEFT : (balance > 0 ? RIGHT : EQUALS))) {
+    return (ValidationResult){.valid = false, .height = 0};
+  }
+
+  return (ValidationResult){
+      .valid = true,
+      .height = 1 + (left.height > right.height ? left.height : right.height)};
+}
+
+bool tree_validate(const Tree *tree) {
+  _check_not_null(tree);
+  if (tree->root == NULL)
+    return tree->size == 0;
+  ValidationResult res =
+      _validate_node(tree->root, tree->comparator, NULL, NULL);
+  return res.valid;
 }
 
 bool tree_add(Tree *tree, const void *val) {
@@ -98,87 +150,61 @@ static int _get_deep(const Node *node) {
   return 1 + (left > right ? left : right);
 }
 
-/*
- * Вызов для всего дерева.
- * Печатает глубину и возвращает true, если дерево:
- *   - не NULL
- *   - корректно как BST
- *   - сбалансировано (AVL)
- *   - имеет консистентные balance_factor
- */
-bool tree_validate(const Tree *tree) {
-  _check_not_null(tree);
-  if (tree->size == 0) {
-    return true;
-  }
-
-  // int left = _get_deep(tree->root->left);
-  // int right = _get_deep(tree->root->right);
-
-  printf("L %d | R %d\n", left, right);
-
-  // int diff = abs(left - right);
-
-  return true;
-}
-
 bool tree_remove(Tree *tree, const void *val) {
   _check_not_null(tree);
 
-  Node *node = _find_node(tree->root, val, tree->comparator);
-  if (node == NULL) {
+  Node *node_for_removal = _find_node(tree->root, val, tree->comparator);
+  if (node_for_removal == NULL) {
     return false;
   }
 
+  Node **ptr_to_removing_node =
+      node_for_removal->parent == NULL ? &tree->root
+      : node_for_removal->parent->left == node_for_removal
+          ? &node_for_removal->parent->left
+          : &node_for_removal->parent->right;
+
   if (tree->size == 1) {
-    _destroy_node(tree->root);
     tree->root = NULL;
-    tree->size = 0;
-    return true;
-  }
 
-  if (node == tree->root && tree->root->left == NULL ||
-      tree->root->right == NULL) {
-    tree->root =
-        tree->root->left == NULL ? tree->root->right : tree->root->left;
-    tree->root->parent = NULL;
-    tree->size--;
+  } else if (node_for_removal->left == NULL &&
+             node_for_removal->right == NULL) {
+    bool from_left = node_for_removal->parent->left == node_for_removal;
+    *ptr_to_removing_node = NULL;
+    _rebalance_after_remove(node_for_removal->parent, from_left, &tree->root);
+  } else if (node_for_removal->left != NULL &&
+             node_for_removal->right != NULL) {
 
-    _destroy_node(node);
-    return true;
-  }
+    Node *min = _find_min_node(node_for_removal->right);
+    void *tmp_val = node_for_removal->val;
+    node_for_removal->val = min->val;
 
-  const Direction dir = node->parent->left == node ? LEFT_DIR : RIGHT_DIR;
-  Node **link_to_current_node;
-  if (node == tree->root) {
-    link_to_current_node = &tree->root;
+    bool from_left = (min->parent->left == min);
+    if (from_left) {
+      min->parent->left = min->right;
+    } else {
+      min->parent->right = min->right;
+    }
+    if (min->right != NULL) {
+      min->right->parent = min->parent;
+    }
+
+    _rebalance_after_remove(min->parent, from_left, &tree->root);
+    node_for_removal = min;
   } else {
-    link_to_current_node =
-        dir == LEFT_DIR ? &node->parent->left : &node->parent->right;
+    Node *child = node_for_removal->left ? node_for_removal->left
+                                         : node_for_removal->right;
+    bool from_left = node_for_removal->parent &&
+                     node_for_removal->parent->left == node_for_removal;
+
+    *ptr_to_removing_node = child;
+    child->parent = node_for_removal->parent;
+
+    _rebalance_after_remove(node_for_removal->parent, from_left, &tree->root);
   }
 
-  Node *parent = node->parent;
-  if (node->left == NULL && node->right == NULL) {
-    *link_to_current_node = NULL;
-    _rebalance_after_remove(parent, NULL, &tree->root);
-  } else if (node->left == NULL || node->right == NULL) {
-    Node *next = node->left == NULL ? node->right : node->left;
-    next->parent = parent;
-    *link_to_current_node = next;
-    _rebalance_after_remove(parent, next, &tree->root);
-  } else {
-    Node *to_add = _find_parent(node->right, node->left->val, tree->comparator);
-    *link_to_current_node = node->right;
-    node->right->parent = parent;
-
-    to_add->left = node->left;
-    node->left->parent = to_add;
-    _rebalance_after_remove(to_add, to_add->left, &tree->root);
-  }
-
-  _destroy_node(node);
   tree->size--;
-
+  _destroy_node(node_for_removal);
   return true;
 }
 
@@ -410,86 +436,85 @@ void _rebalance_after_insert(Node *node, Node **root) {
   }
 }
 
-void _rebalance_after_remove(Node *parent, Node *linked, Node **root) {
-  if (parent == NULL) {
-    return;
-  }
-
-  // rmoeved list, and has another - deep is the same
-  if (parent->balance_factor == EQUALS) {
-    parent->balance_factor = parent->left == NULL ? RIGHT : LEFT;
-    return;
-  }
-
+void _rebalance_after_remove(Node *parent, bool from_left, Node **root) {
   Node *a = parent;
-  Node *b = NULL;
-  if (a->left != NULL && a->right != NULL) {
-    b = a->left->left != NULL || a->left->right != NULL ? a->left : a->right;
-  } else if (a->left != NULL || a->right != NULL) {
-    b = a->left == NULL ? a->right : a->left;
-  }
 
   while (a != NULL) {
-    if (a->left == NULL && a->right == NULL) {
+    if (a->balance_factor == EQUALS) {
+      a->balance_factor = from_left ? RIGHT : LEFT; // the same height
+      return;
+    }
+
+    bool next_from_left = a->parent != NULL && (a->parent->left == a);
+    Node *next_a = a->parent;
+
+    if (a->balance_factor == LEFT && from_left ||
+        a->balance_factor == RIGHT && !from_left) {
       a->balance_factor = EQUALS;
-      if (b != NULL && b->balance_factor == EQUALS) {
+    } else {
+      Node *b = a->balance_factor == LEFT ? a->left : a->right;
+
+      if (b->balance_factor == EQUALS) {
+        if (a->balance_factor == LEFT) {
+          _rotate_right(a, root);
+          a->parent->balance_factor = RIGHT;
+          a->balance_factor = LEFT;
+        } else {
+          _rotate_left(a, root);
+          a->parent->balance_factor = LEFT;
+          a->balance_factor = RIGHT;
+        }
         return;
       }
 
-      b = a;
-      a = a->parent;
-      continue;
+      Node *c = NULL;
+      if (a->balance_factor == LEFT && b->balance_factor == LEFT ||
+          a->balance_factor == RIGHT && b->balance_factor == RIGHT) {
+
+        b->balance_factor == LEFT ? _rotate_right(a, root)
+                                  : _rotate_left(a, root);
+
+        a->balance_factor = b->balance_factor = EQUALS;
+      } else if (a->balance_factor == LEFT && b->balance_factor == RIGHT) {
+        Node *c = b->right;
+
+        _rotate_left(b, root);
+        _rotate_right(a, root);
+
+        if (c == NULL || c->balance_factor == EQUALS) {
+          a->balance_factor = EQUALS;
+          b->balance_factor = EQUALS;
+        } else if (c->balance_factor == LEFT) {
+          a->balance_factor = RIGHT;
+          b->balance_factor = EQUALS;
+        } else {
+          a->balance_factor = EQUALS;
+          b->balance_factor = LEFT;
+        }
+
+        c != NULL && (c->balance_factor = EQUALS);
+      } else {
+        Node *c = b->left;
+
+        _rotate_right(b, root);
+        _rotate_left(a, root);
+
+        if (c == NULL || c->balance_factor == EQUALS) {
+          a->balance_factor = EQUALS;
+          b->balance_factor = EQUALS;
+        } else if (c->balance_factor == RIGHT) {
+          a->balance_factor = LEFT;
+          b->balance_factor = EQUALS;
+        } else { // LEFT
+          a->balance_factor = EQUALS;
+          b->balance_factor = RIGHT;
+        }
+        c != NULL && (c->balance_factor = EQUALS);
+      }
     }
 
-    if (a->balance_factor == EQUALS) {
-      a->balance_factor = a->left == b ? RIGHT : LEFT;
-    }
-
-    if (b->balance_factor == EQUALS) {
-      a->balance_factor += a->left == b ? RIGHT : LEFT;
-      b = a;
-      a = a->parent;
-      continue;
-    }
-
-    if (a->balance_factor == RIGHT && b->balance_factor == RIGHT ||
-        a->balance_factor == LEFT && b->balance_factor == LEFT) {
-      Node *a_parent = a->parent;
-
-      a->balance_factor == RIGHT ? _rotate_left(a, root)
-                                 : _rotate_right(a, root);
-      a->balance_factor = EQUALS;
-      b->balance_factor = EQUALS;
-      a = a_parent;
-      continue;
-    }
-
-    Node *r = b->balance_factor == EQUALS ? NULL
-              : b->balance_factor == LEFT ? b->left
-                                          : b->right;
-    // a right, b left OR a left, b right
-    Node *prev_parent = a->parent;
-    const bool from_left = prev_parent != NULL && prev_parent->left == a;
-    const bool right = a->balance_factor == RIGHT;
-    if (right) {
-      _rotate_right(b, root);
-      _rotate_left(a, root);
-    } else {
-      _rotate_left(b, root);
-      _rotate_right(a, root);
-    }
-
-    if (r == NULL || r->balance_factor == EQUALS) {
-      a->balance_factor = b->balance_factor = EQUALS;
-    } else if (r->balance_factor == LEFT) {
-      a->balance_factor = b->balance_factor = LEFT;
-    } else {
-      a->balance_factor = b->balance_factor = RIGHT;
-    }
-    r->balance_factor = EQUALS;
-
-    a = prev_parent;
-    b = a == NULL ? NULL : from_left ? a->left : a->right;
+    from_left = next_from_left;
+    a = next_a;
   }
 }
 

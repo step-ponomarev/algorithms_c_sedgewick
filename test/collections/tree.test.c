@@ -27,10 +27,12 @@ void test_tree_adding() {
   Tree *tree = tree_create(sizeof(int), &comare_int);
   for (int i = 0; i < AMOUNT; i++) {
     tree_add(tree, &i);
+    assert(tree_validate(tree));
   }
 
   assert(tree_size(tree) == AMOUNT);
   assert(!tree_is_empty(tree));
+  assert(tree_validate(tree));
 
   for (int i = 0; i < AMOUNT; i++) {
     assert(tree_contains(tree, &i));
@@ -44,6 +46,7 @@ void test_tree_duplicate_adding() {
   int added_value = 123;
   for (int i = 0; i < AMOUNT; i++) {
     tree_add(tree, &added_value);
+    assert(tree_validate(tree));
   }
 
   assert(tree_size(tree) == 1);
@@ -56,7 +59,6 @@ void test_tree_removing() {
   Tree *tree = tree_create(sizeof(int), &comare_int);
   for (int i = 0; i < AMOUNT; i++) {
     tree_add(tree, &i);
-    assert(tree_validate(tree));
   }
 
   for (int i = AMOUNT - 1; i >= 0; i--) {
@@ -128,8 +130,9 @@ void test_reverse_order_visitin_rand() {
   Tree *tree = tree_create(sizeof(int), &comare_int);
 
   for (int i = 0; i < AMOUNT; i++) {
-    const int val = random_int(0, 100);
+    const int val = random_int(-120, 100);
     tree_add(tree, &val);
+    assert(tree_validate(tree));
   }
 
   traversal(tree, RNL);
