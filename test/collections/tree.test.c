@@ -1,7 +1,6 @@
 #include "../../src/collections/tree.h"
 #include "../../src/lib/rand_utils.c"
 #include <assert.h>
-#include <stddef.h>
 #include <stdio.h>
 
 #define AMOUNT 100
