@@ -1,5 +1,6 @@
 #include "../../src/collections/tree.h"
-#include "../../src/lib/rand_utils.c"
+#include "../../src/lib/rand_utils.h"
+#include "stdlib.h"
 #include <assert.h>
 #include <stdio.h>
 
