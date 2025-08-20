@@ -62,7 +62,6 @@ void tree_destroy(Tree *tree) {
   free(tree);
 }
 
-// Вспомогательная структура для возврата сразу нескольких проверок
 typedef struct ValidationResult {
   bool valid;
   int height;
@@ -75,7 +74,6 @@ static ValidationResult _validate_node(const Node *node, Comparator *comparator,
     return (ValidationResult){.valid = true, .height = 0};
   }
 
-  // Проверка BST-инварианта: node->val ∈ (min_val, max_val)
   if (min_val && comparator(node->val, min_val) <= 0) {
     return (ValidationResult){.valid = false, .height = 0};
   }
@@ -83,7 +81,6 @@ static ValidationResult _validate_node(const Node *node, Comparator *comparator,
     return (ValidationResult){.valid = false, .height = 0};
   }
 
-  // Рекурсивная проверка поддеревьев
   ValidationResult left =
       _validate_node(node->left, comparator, min_val, node->val);
   if (!left.valid)
@@ -94,13 +91,11 @@ static ValidationResult _validate_node(const Node *node, Comparator *comparator,
   if (!right.valid)
     return right;
 
-  // Проверка AVL-баланса
   int balance = right.height - left.height;
   if (balance < -1 || balance > 1) {
     return (ValidationResult){.valid = false, .height = 0};
   }
 
-  // Проверка согласованности balance_factor
   if ((int)node->balance_factor !=
       (balance < 0 ? LEFT : (balance > 0 ? RIGHT : EQUALS))) {
     return (ValidationResult){.valid = false, .height = 0};
@@ -115,9 +110,10 @@ bool tree_validate(const Tree *tree) {
   _check_not_null(tree);
   if (tree->root == NULL)
     return tree->size == 0;
-  ValidationResult res =
-      _validate_node(tree->root, tree->comparator, NULL, NULL);
-  return res.valid;
+
+  return ((ValidationResult)_validate_node(tree->root, tree->comparator, NULL,
+                                           NULL))
+      .valid;
 }
 
 bool tree_add(Tree *tree, const void *val) {
