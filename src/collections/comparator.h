@@ -1,6 +1,7 @@
 #ifndef COMPARATOR_H_
 #define COMPARATOR_H_
 
-typedef int Comparator(const void *, const void *);
+typedef char Comparator(const void *, const void *);
+char compare_int(const void *a, const void *b);
 
 #endif
